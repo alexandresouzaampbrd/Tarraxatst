@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0b09">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tarraxa">
+<meta name="description" content="Afinador de bateria por frequência. Iguale as tarraxas, grave sessões, consulte referências por estilo.">
+<title>Tarraxa — Afinador de bateria</title>
+
+<!-- PWA manifest inline -->
+<script>
+const manifest = {
+  name: "Tarraxa — Afinador de bateria",
+  short_name: "Tarraxa",
+  start_url: ".",
+  display: "standalone",
+  background_color: "#0d0b09",
+  theme_color: "#0d0b09",
+  description: "Afinador de bateria por frequência. Iguale as tarraxas.",
+  icons: [
+    { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230d0b09' rx='40'/%3E%3Ccircle cx='96' cy='96' r='56' stroke='%23e0943a' stroke-width='6' fill='none'/%3E%3Ccircle cx='96' cy='96' r='36' stroke='%23e0943a' stroke-width='3' fill='none'/%3E%3Ccircle cx='96' cy='96' r='7' fill='%23e0943a'/%3E%3C/svg%3E", sizes: "192x192", type: "image/svg+xml" }
+  ]
+};
+const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+const murl = URL.createObjectURL(blob);
+const link = document.createElement('link');
+link.rel = 'manifest'; link.href = murl;
+document.head.appendChild(link);
+</script>
+
+<style>
+/* ── Tokens ─────────────────────────────────────────────── */
+:root {
+  --bg:       #0d0b09;
+  --surf:     #1a1714;
+  --surf2:    #232019;
+  --surf3:    #2d2a24;
+  --fg:       #f0ebe1;
+  --muted:    #9a9183;
+  --border:   #38332c;
+  --acc:      #e0943a;
+  --acc-fg:   #190f01;
+  --ok:       #7ecfa0;
+  --ok-dim:   #1a3326;
+  --warn:     #e0943a;
+  --warn-dim: #331e07;
+  --font:     'Sora', ui-sans-serif, system-ui, sans-serif;
+  --mono:     'JetBrains Mono', ui-monospace, monospace;
+  --r-sm:     8px;
+  --r-md:     14px;
+  --r-lg:     20px;
+  --r-full:   9999px;
+  --safe-t:   env(safe-area-inset-top, 0px);
+  --safe-b:   env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; width: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  padding-top: var(--safe-t);
+}
+button {
+  border: none; background: none; color: inherit;
+  font: inherit; cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+button:disabled { cursor: not-allowed; }
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+input, textarea {
+  font: inherit; color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  width: 100%;
+}
+input:focus, textarea:focus { border-color: var(--acc); outline: none; }
+textarea { resize: none; }
+
+/* ── Layout ─────────────────────────────────────────────── */
+#app {
+  display: flex; flex-direction: column;
+  height: 100dvh; max-height: 100dvh;
+  max-width: 480px; margin: 0 auto;
+}
+#header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+#header-left .brand { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--acc); }
+#header-left .subtitle { font-size: 12px; color: var(--muted); margin-top: 1px; }
+#status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border); transition: background .3s;
+  display: inline-block; margin-right: 6px;
+}
+#status-dot.live { background: var(--ok); }
+#status-dot.reading { background: var(--acc); }
+#status-label { font-size: 12px; color: var(--muted); }
+#btn-help {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--border);
+  display: grid; place-items: center;
+  color: var(--muted); font-size: 18px;
+  flex-shrink: 0;
+}
+
+#notice {
+  margin: 6px 12px; padding: 8px 14px;
+  background: var(--surf); border-radius: var(--r-sm);
+  font-size: 13px; text-align: center; color: var(--acc);
+  display: none;
+}
+#notice.show { display: block; }
+
+#main { flex: 1; overflow-y: auto; min-height: 0; }
+
+#nav {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--border);
+  background: var(--surf);
+  flex-shrink: 0;
+  padding-bottom: var(--safe-b);
+}
+.nav-btn {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px; min-height: 56px;
+  font-size: 11px; font-weight: 600;
+  color: var(--muted); position: relative;
+}
+.nav-btn.active { color: var(--acc); }
+.nav-btn.active::before {
+  content: ''; position: absolute; top: 0;
+  width: 28px; height: 2px;
+  background: var(--acc); border-radius: 0 0 2px 2px;
+}
+.nav-btn svg { width: 20px; height: 20px; }
+
+/* ── Screens ────────────────────────────────────────────── */
+.screen { display: none; flex-direction: column; gap: 16px; padding: 14px 14px 20px; }
+.screen.active { display: flex; }
+
+/* ── Tune screen ────────────────────────────────────────── */
+#filter-row {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 4px; background: var(--surf); border-radius: var(--r-full);
+  padding: 4px;
+}
+.filter-btn {
+  border-radius: var(--r-full); padding: 10px 4px;
+  font-size: 13px; font-weight: 700;
+  color: var(--muted); text-align: center;
+  transition: background .15s, color .15s;
+}
+.filter-btn.active {
+  background: var(--acc); color: var(--acc-fg);
+}
+#filter-hint { text-align: center; font-size: 12px; color: var(--muted); margin-top: -6px; }
+
+/* Big meter */
+#meter-wrap {
+  position: relative; width: 100%;
+  padding-bottom: 100%; max-width: 280px;
+  margin: 0 auto; flex-shrink: 0;
+}
+#meter-inner {
+  position: absolute; inset: 0;
+}
+#meter-ring-outer {
+  position: absolute; inset: 0;
+  border: 1.5px solid var(--border); border-radius: 50%;
+}
+#meter-ring-mid {
+  position: absolute; inset: 14px;
+  border: 1px solid color-mix(in srgb, var(--acc) 22%, transparent);
+  border-radius: 50%;
+}
+#meter-ping {
+  position: absolute; inset: 28px; border-radius: 50%;
+  border: 1.5px solid var(--acc); opacity: 0; pointer-events: none;
+}
+#meter-ping.ping { animation: drum-ping 600ms ease-out forwards; }
+@keyframes drum-ping {
+  0%  { opacity: .7; transform: scale(.92); }
+  100%{ opacity: 0; transform: scale(1.06); }
+}
+#meter-face {
+  position: absolute; inset: 28px; border-radius: 50%;
+  background: var(--surf);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0;
+}
+#meter-hz {
+  font-family: var(--mono); font-size: clamp(38px,10vw,52px);
+  font-weight: 600; line-height: 1; color: var(--muted);
+  transition: color .2s;
+}
+#meter-hz.has-reading { color: var(--fg); }
+#meter-hz.on-target { color: var(--ok); }
+#meter-unit { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; color: var(--muted); margin-top: 4px; }
+#meter-note { font-size: 13px; color: var(--muted); margin-top: 6px; min-height: 18px; text-align: center; padding: 0 8px; }
+
+/* Level / spectrum */
+#vis-box {
+  background: var(--surf); border-radius: var(--r-md);
+  padding: 12px 14px 10px;
+}
+#spectrum {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 52px; overflow: hidden;
+}
+.spec-bar {
+  flex: 1; background: var(--acc); border-radius: 2px 2px 0 0;
+  transform: scaleY(.04); transform-origin: bottom;
+  opacity: .35; transition: transform 50ms linear, opacity 50ms linear;
+  min-width: 0;
+}
+#level-bar {
+  height: 3px; background: var(--surf3); border-radius: var(--r-full);
+  margin-top: 8px; overflow: hidden;
+}
+#level-fill {
+  height: 100%; background: var(--acc);
+  transform: scaleX(0); transform-origin: left;
+  border-radius: var(--r-full); transition: transform 60ms linear;
+}
+
+/* Target chip */
+#target-chip {
+  display: none; align-items: center; gap: 10px;
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 10px 12px;
+}
+#target-chip.show { display: flex; }
+#target-info { flex: 1; min-width: 0; }
+#target-meta { font-size: 11px; color: var(--muted); }
+#target-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#target-hz-val { font-family: var(--mono); font-size: 18px; color: var(--acc); }
+#btn-clear-target { font-size: 13px; color: var(--muted); padding: 6px 8px; flex-shrink: 0; }
+
+/* Needle */
+#needle-section { display: flex; flex-direction: column; gap: 6px; }
+#needle-header { display: flex; justify-content: space-between; align-items: baseline; }
+#needle-label { font-size: 13px; color: var(--muted); }
+#needle-val { font-family: var(--mono); font-size: 13px; }
+#needle-track {
+  height: 20px; background: var(--surf2); border-radius: var(--r-full);
+  position: relative; overflow: hidden;
+}
+/* fundo gradiente fixo: vermelho → amarelo → verde → amarelo → vermelho */
+#needle-gradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(to right,
+    #c0392b 0%, #e67e22 25%, #f1c40f 38%,
+    #27ae60 44%, #2ecc71 50%, #27ae60 56%,
+    #f1c40f 62%, #e67e22 75%, #c0392b 100%);
+  opacity: .18;
+}
+/* máscara escura que revela apenas a zona ao redor do ponteiro */
+#needle-mask-l, #needle-mask-r {
+  position: absolute; top: 0; bottom: 0;
+  background: var(--surf2); transition: width .12s;
+}
+#needle-mask-l { left: 0; border-radius: var(--r-full) 0 0 var(--r-full); }
+#needle-mask-r { right: 0; border-radius: 0 var(--r-full) var(--r-full) 0; }
+#needle-center { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+  background: var(--border); z-index: 2; }
+#needle-thumb {
+  position: absolute; top: 50%; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--ok);
+  transform: translate(-50%, -50%);
+  left: 50%; z-index: 3;
+  transition: left .12s, background .15s;
+  box-shadow: 0 0 0 3px rgba(0,0,0,.5);
+}
+#needle-thumb.red   { background: #c0392b; }
+#needle-thumb.warn  { background: #e67e22; }
+#needle-thumb.close { background: #f1c40f; }
+#needle-thumb.good  { background: #2ecc71; }
+#needle-hint { font-size: 13px; color: var(--muted); min-height: 36px; }
+
+/* Buttons */
+.btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--acc); color: var(--acc-fg);
+  border-radius: var(--r-md); padding: 0 16px;
+  min-height: 52px; font-size: 15px; font-weight: 700;
+  width: 100%; transition: filter .1s;
+}
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-primary:active { filter: brightness(.94); }
+.btn-primary:disabled { opacity: .35; filter: none; }
+.btn-secondary {
+  background: var(--surf); border: 1px solid var(--border);
+  color: var(--fg); border-radius: var(--r-md);
+  min-height: 48px; font-size: 14px; font-weight: 600;
+  width: 100%; padding: 0 14px;
+}
+.btn-outline {
+  border: 1px solid var(--border);
+  color: var(--fg); border-radius: var(--r-md);
+  min-height: 48px; font-size: 14px; font-weight: 600;
+  width: 100%; padding: 0 14px;
+}
+.btn-ghost { color: var(--muted); font-size: 14px; font-weight: 500; padding: 6px 0; }
+
+/* Bench mode */
+#bench-controls { display: flex; flex-direction: column; gap: 8px; }
+#bench-row { display: grid; grid-template-columns: 48px 1fr 48px; gap: 10px; align-items: center; }
+.btn-nudge {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surf);
+  font-size: 22px; color: var(--fg); display: grid; place-items: center;
+}
+#bench-hint { font-size: 12px; color: var(--muted); text-align: center; }
+
+/* Suggest filter hint */
+#filter-suggest {
+  display: none;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 11px 14px; font-size: 13px; color: var(--acc);
+  background: var(--surf); text-align: left; width: 100%;
+}
+#filter-suggest.show { display: block; }
+
+/* Error */
+#mic-error {
+  display: none; padding: 11px 14px; border-radius: var(--r-md);
+  background: var(--surf); border: 1px solid var(--border);
+  font-size: 13px; color: var(--fg);
+}
+#mic-error.show { display: block; }
+
+/* Record lug */
+#btn-record-lug {
+  border: 1px solid var(--border);
+}
+
+/* ── Lugs screen ─────────────────────────────────────────── */
+#lug-diagram {
+  position: relative; width: 100%;
+  padding-bottom: min(100%, 320px); max-width: 320px; margin: 0 auto;
+}
+#lug-inner { position: absolute; inset: 0; }
+#lug-outer-ring { position: absolute; inset: 20px; border: 1.5px solid var(--border); border-radius: 50%; background: var(--surf2); }
+#lug-inner-ring { position: absolute; inset: 54px; border: 1px solid color-mix(in srgb, var(--acc) 18%, transparent); border-radius: 50%; }
+#lug-center {
+  position: absolute; inset: 54px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+#lug-spread { font-family: var(--mono); font-size: 28px; font-weight: 700; color: var(--fg); }
+#lug-spread.uniform { color: var(--ok); }
+#lug-spread-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.lug-btn {
+  position: absolute; width: 48px; height: 48px;
+  border-radius: 50%; border: 2px solid var(--border);
+  background: var(--surf); display: grid; place-items: center;
+  transform: translate(-50%, -50%);
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--muted); transition: border-color .15s, color .15s, background .15s;
+}
+.lug-btn.active { border-color: var(--acc); background: var(--acc); color: var(--acc-fg); }
+.lug-btn.ok { border-color: var(--ok); color: var(--ok); }
+.lug-btn.sharp { border-color: var(--warn); color: var(--warn); }
+.lug-btn.flat { border-color: color-mix(in srgb, var(--acc) 50%, transparent); color: var(--muted); }
+
+#lug-advice { font-size: 13px; color: var(--muted); text-align: center; padding: 0 8px; min-height: 36px; }
+
+#lug-count-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.lug-count-btn {
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  min-height: 44px; font-size: 13px; font-weight: 600; color: var(--muted);
+}
+.lug-count-btn.active { border-color: var(--acc); background: var(--acc); color: var(--acc-fg); }
+
+#lug-record-btn { }
+#lug-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* Save sheet */
+#save-form { display: flex; flex-direction: column; gap: 12px; }
+#save-form label { font-size: 13px; color: var(--muted); }
+#save-form label span { display: block; margin-bottom: 4px; }
+
+/* ── Guide screen ────────────────────────────────────────── */
+#style-scroll {
+  display: flex; gap: 8px; overflow-x: auto;
+  scrollbar-width: none; padding-bottom: 2px;
+}
+#style-scroll::-webkit-scrollbar { display: none; }
+.style-chip {
+  flex-shrink: 0; padding: 8px 18px; border-radius: var(--r-full);
+  background: var(--surf); color: var(--muted);
+  font-size: 13px; font-weight: 700; white-space: nowrap;
+}
+.style-chip.active { background: var(--acc); color: var(--acc-fg); }
+#style-blurb { font-size: 13px; color: var(--muted); padding: 0 2px; }
+#guide-list { display: flex; flex-direction: column; gap: 6px; }
+.guide-item {
+  display: flex; align-items: center;
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 11px 13px; gap: 10px;
+  width: 100%; text-align: left;
+}
+.guide-item.selected { border-color: var(--acc); background: var(--warn-dim); }
+.guide-item-info { flex: 1; min-width: 0; }
+.guide-item-name { font-size: 14px; font-weight: 600; }
+.guide-item-role { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.guide-item-hz { font-family: var(--mono); font-size: 18px; color: var(--acc); margin-left: auto; }
+.guide-item-note { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+/* ── Notes screen ────────────────────────────────────────── */
+#notes-empty {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 36px 20px;
+  text-align: center;
+}
+#notes-empty p { font-size: 13px; color: var(--muted); margin-top: 6px; }
+#notes-list { display: flex; flex-direction: column; gap: 10px; }
+.session-card {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 13px 14px;
+}
+.session-title { font-size: 15px; font-weight: 600; }
+.session-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.session-stats { font-size: 12px; font-family: var(--mono); margin-top: 6px; color: var(--fg); }
+.session-note-text { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.session-actions { display: flex; gap: 8px; margin-top: 10px; }
+.session-actions .btn-primary { flex: 1; min-height: 42px; font-size: 13px; }
+.btn-del { min-height: 42px; padding: 0 14px; border: 1px solid var(--border); border-radius: var(--r-md); font-size: 13px; color: var(--muted); }
+.btn-del.confirm { border-color: color-mix(in srgb, red 40%, var(--border)); color: #e57373; }
+
+/* ── Sheet / overlay ─────────────────────────────────────── */
+#overlay {
+  display: none; position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,.72);
+  align-items: flex-end; justify-content: center; padding: 12px;
+}
+#overlay.show { display: flex; }
+#sheet {
+  width: 100%; max-width: 480px;
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-sm);
+  padding: 20px; max-height: 86dvh; overflow-y: auto;
+}
+#sheet-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+#sheet-title { font-size: 17px; font-weight: 700; }
+#sheet-close {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 50%; border: 1px solid var(--border);
+  display: grid; place-items-center: center; place-items: center;
+  font-size: 18px; color: var(--muted);
+}
+#sheet-body { display: flex; flex-direction: column; gap: 12px; }
+
+/* Help content */
+#help-steps { display: flex; flex-direction: column; gap: 12px; margin-bottom: 4px; }
+.help-step { display: flex; gap: 12px; font-size: 14px; }
+.help-step-n { font-family: var(--mono); font-size: 12px; color: var(--acc); padding-top: 2px; flex-shrink: 0; }
+.help-install { border-top: 1px solid var(--border); padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.help-install-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.help-install p { font-size: 13px; color: var(--muted); }
+
+/* Section headers */
+.screen-head { }
+.screen-head h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.screen-head p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Header -->
+  <header id="header">
+    <div id="header-left">
+      <div class="brand">TARRAXA</div>
+      <div class="subtitle">Afinador de bateria</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:0">
+        <span id="status-dot"></span>
+        <span id="status-label">pronto</span>
+      </div>
+      <button id="btn-help" class="btn-help" aria-label="Ajuda e instalação">?</button>
+    </div>
+  </header>
+
+  <!-- Notice flash -->
+  <div id="notice" role="status" aria-live="polite"></div>
+
+  <!-- Main scroll area -->
+  <main id="main">
+
+    <!-- ═══ TUNE screen ═══════════════════════════════════ -->
+    <div id="screen-tune" class="screen active">
+
+      <!-- Filter selector -->
+      <div id="filter-row" role="group" aria-label="Filtro de frequência">
+        <button class="filter-btn active" data-filter="grave">Grave</button>
+        <button class="filter-btn" data-filter="amplo">Amplo</button>
+        <button class="filter-btn" data-filter="agudo">Agudo</button>
+      </div>
+      <p id="filter-hint">20–120 Hz · Bumbo e surdos</p>
+
+      <!-- Big frequency meter -->
+      <div id="meter-wrap">
+        <div id="meter-inner">
+          <div id="meter-ring-outer"></div>
+          <div id="meter-ring-mid"></div>
+          <div id="meter-ping"></div>
+          <div id="meter-face">
+            <div id="meter-hz">—</div>
+            <div id="meter-unit">HZ</div>
+            <div id="meter-note">À espera da batida</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spectrum + level -->
+      <div id="vis-box">
+        <div id="spectrum" aria-hidden="true"></div>
+        <div id="level-bar"><div id="level-fill"></div></div>
+      </div>
+
+      <!-- Target chip -->
+      <div id="target-chip" aria-live="polite">
+        <div id="target-info">
+          <div id="target-meta"></div>
+          <div id="target-name"></div>
+        </div>
+        <div id="target-hz-val"></div>
+        <button id="btn-clear-target">Tirar</button>
+      </div>
+
+      <!-- Needle -->
+      <div id="needle-section">
+        <div id="needle-header">
+          <span id="needle-label">Contra a nota</span>
+          <span id="needle-val" class="font-mono">—</span>
+        </div>
+        <div id="needle-track">
+          <div id="needle-gradient"></div>
+          <div id="needle-mask-l"></div>
+          <div id="needle-mask-r"></div>
+          <div id="needle-center"></div>
+          <div id="needle-thumb"></div>
+        </div>
+        <p id="needle-hint">Encoste o celular na pele e bata uma vez.</p>
+      </div>
+
+      <!-- Filter suggestion -->
+      <button id="filter-suggest" onclick="applySuggestedFilter()"></button>
+
+      <!-- Mic error -->
+      <div id="mic-error"></div>
+
+      <!-- Bench mode controls (hidden by default) -->
+      <div id="bench-controls" style="display:none">
+        <div id="bench-row">
+          <button class="btn-nudge" id="btn-nudge-down" aria-label="Soltar">−</button>
+          <button class="btn-primary" id="btn-bench-hit">Bater · 200 Hz</button>
+          <button class="btn-nudge" id="btn-nudge-up" aria-label="Apertar">+</button>
+        </div>
+        <p id="bench-hint">Teste sem bateria. Apertar sobe o tom, soltar desce.</p>
+      </div>
+
+      <!-- Main action -->
+      <button class="btn-primary" id="btn-mic">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        Ouvir o tambor
+      </button>
+
+      <!-- Toggle bench -->
+      <button class="btn-secondary" id="btn-toggle-bench">Testar sem bateria</button>
+
+      <!-- Record lug -->
+      <button class="btn-outline" id="btn-record-lug-tune" disabled>Gravar na tarraxa 1</button>
+    </div>
+
+    <!-- ═══ LUGS screen ═══════════════════════════════════ -->
+    <div id="screen-lugs" class="screen">
+      <div class="screen-head">
+        <h2>Tarraxa por tarraxa</h2>
+        <p>Bata perto de cada parafuso. A pele fica limpa quando todas leem o mesmo Hz.</p>
+      </div>
+
+      <!-- Drum diagram -->
+      <div id="lug-diagram">
+        <div id="lug-inner">
+          <div id="lug-outer-ring"></div>
+          <div id="lug-inner-ring"></div>
+          <div id="lug-center">
+            <div id="lug-spread">—</div>
+            <div id="lug-spread-label">desvio</div>
+          </div>
+          <div id="lug-buttons"></div>
+        </div>
+      </div>
+
+      <p id="lug-advice">Bata perto de uma tarraxa e grave a leitura.</p>
+
+      <!-- Count picker -->
+      <div id="lug-count-row" role="group" aria-label="Número de tarraxas">
+        <button class="lug-count-btn" data-count="6">6 tarraxas</button>
+        <button class="lug-count-btn active" data-count="8">8 tarraxas</button>
+        <button class="lug-count-btn" data-count="10">10 tarraxas</button>
+      </div>
+
+      <!-- Record -->
+      <button class="btn-primary" id="lug-record-btn" disabled>Sem leitura ainda</button>
+
+      <!-- Actions -->
+      <div id="lug-actions">
+        <button class="btn-secondary" id="btn-clear-lugs">Limpar mapa</button>
+        <button class="btn-secondary" id="btn-save-session" disabled>Salvar sessão</button>
+      </div>
+    </div>
+
+    <!-- ═══ GUIDE screen ══════════════════════════════════ -->
+    <div id="screen-guide" class="screen">
+      <div class="screen-head">
+        <h2>Guia de afinação</h2>
+        <p>Frequências de partida por estilo — a sala e a pele ajustam o resto.</p>
+      </div>
+
+      <div id="style-scroll" role="group" aria-label="Estilo musical"></div>
+      <p id="style-blurb"></p>
+      <ul id="guide-list" aria-label="Peças do kit"></ul>
+    </div>
+
+    <!-- ═══ NOTES screen ══════════════════════════════════ -->
+    <div id="screen-notes" class="screen">
+      <div class="screen-head">
+        <h2>Caderno</h2>
+        <p>Sessões guardadas só neste celular.</p>
+      </div>
+      <div id="notes-content"></div>
+    </div>
+
+  </main>
+
+  <!-- Bottom nav -->
+  <nav id="nav" aria-label="Seções">
+    <button class="nav-btn active" data-tab="tune">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      Afinar
+    </button>
+    <button class="nav-btn" data-tab="lugs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+      Tarraxas
+    </button>
+    <button class="nav-btn" data-tab="guide">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Guia
+    </button>
+    <button class="nav-btn" data-tab="notes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Caderno
+    </button>
+  </nav>
+</div>
+
+<!-- Overlay / Sheet -->
+<div id="overlay" role="presentation">
+  <div id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div id="sheet-header">
+      <h2 id="sheet-title"></h2>
+      <button id="sheet-close" aria-label="Fechar">✕</button>
+    </div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   THEORY
+═══════════════════════════════════════════════════════════ */
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function hzToNote(hz) {
+  if (!hz || hz <= 0) return null;
+  const midi = Math.round(12 * Math.log2(hz / 440) + 69);
+  const ref = 440 * Math.pow(2, (midi - 69) / 12);
+  const cents = Math.round(1200 * Math.log2(hz / ref));
+  const name = NOTE_NAMES[((midi % 12) + 12) % 12];
+  const octave = Math.floor(midi / 12) - 1;
+  const sign = cents > 0 ? '+' : '';
+  return { name, octave, cents, label: `${name}${octave} ${sign}${cents}¢` };
+}
+
+function centsBetween(fromHz, toHz) {
+  if (!fromHz || !toHz || fromHz <= 0 || toHz <= 0) return 0;
+  return 1200 * Math.log2(toHz / fromHz);
+}
+
+function formatCents(c) {
+  const r = Math.round(c);
+  return r > 0 ? `+${r}¢` : `${r}¢`;
+}
+
+function lugTone(hz, median) {
+  if (hz == null) return 'empty';
+  if (median == null) return 'ok';
+  const d = centsBetween(median, hz);
+  if (Math.abs(d) <= 12) return 'ok';
+  return d > 0 ? 'sharp' : 'flat';
+}
+
+function lugReport(lugs) {
+  const items = lugs.flatMap((hz, i) => hz == null ? [] : [{ hz, i }]);
+  if (items.length === 0) {
+    return { count: 0, spreadCents: 0, median: null,
+      advice: 'Bata perto de uma tarraxa e grave a leitura.', uniform: false };
+  }
+  const sorted = [...items].sort((a, b) => a.hz - b.hz);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2
+    ? sorted[mid].hz
+    : (sorted[mid-1].hz + sorted[mid].hz) / 2;
+  const low = sorted[0];
+  const high = sorted[sorted.length - 1];
+  const spreadCents = Math.round(Math.abs(centsBetween(low.hz, high.hz)));
+  const uniform = items.length >= 2 && spreadCents <= 20;
+  let advice = 'Grave mais uma tarraxa para comparar.';
+  if (items.length >= 2 && uniform) {
+    advice = 'Pele uniforme — todas as tarraxas alinhadas.';
+  } else if (items.length >= 2) {
+    advice = `Tarraxa ${high.i+1} está mais aguda. Solte ela, ou aperte a ${low.i+1}.`;
+  }
+  return { count: items.length, spreadCents, median, advice, uniform };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PITCH ENGINE — improved
+   HPS (Harmonic Product Spectrum) + parabolic interpolation
+   + median smoothing + adaptive noise gate
+═══════════════════════════════════════════════════════════ */
+const BAR_COUNT = 40;
+
+function dbToLinear(db) {
+  if (!isFinite(db) || db <= -96) return 0;
+  return Math.pow(10, db / 20);
+}
+
+function parabolicPeak(mag, bin) {
+  const l = Math.log((mag[bin-1] || 1e-12) + 1e-12);
+  const c = Math.log((mag[bin]   || 1e-12) + 1e-12);
+  const r = Math.log((mag[bin+1] || 1e-12) + 1e-12);
+  const d = l - 2*c + r;
+  if (d === 0 || !isFinite(d)) return 0;
+  const s = 0.5 * (l - r) / d;
+  return isFinite(s) ? Math.max(-0.5, Math.min(0.5, s)) : 0;
+}
+
+function isLocalPeak(mag, bin) {
+  return mag[bin] >= (mag[bin-1]||0) && mag[bin] >= (mag[bin+1]||0);
+}
+
+// HPS — multiply spectrum by its downsampled harmonics
+function hpsDetect(mag, sampleRate, fftSize, minHz, maxHz) {
+  const hzPerBin = sampleRate / fftSize;
+  const minBin = Math.max(2, Math.ceil(minHz / hzPerBin));
+  const maxBin = Math.min(mag.length - 2, Math.floor(maxHz / hzPerBin));
+  if (maxBin <= minBin) return null;
+
+  // Build HPS product (3 harmonics)
+  const hps = new Float32Array(maxBin + 1);
+  for (let b = minBin; b <= maxBin; b++) {
+    let v = mag[b];
+    for (let k = 2; k <= 4; k++) {
+      const hb = Math.round(b * k);
+      if (hb < mag.length) v *= mag[hb];
+      else { v = 0; break; }
+    }
+    hps[b] = v;
+  }
+
+  // Find best bin in range
+  let bestBin = -1, bestScore = 0;
+  for (let b = minBin; b <= maxBin; b++) {
+    if (hps[b] > bestScore && isLocalPeak(hps, b)) {
+      bestScore = hps[b]; bestBin = b;
+    }
+  }
+  if (bestBin < 0 || bestScore < 1e-20) return null;
+
+  // Octave-down check: real subharmonic present?
+  const half = Math.round(bestBin / 2);
+  for (const cand of [half-1, half, half+1]) {
+    if (cand < minBin) continue;
+    if (!isLocalPeak(mag, cand)) continue;
+    if (mag[cand] > mag[bestBin] * 0.25) { bestBin = cand; break; }
+  }
+
+  const shift = parabolicPeak(hps, bestBin);
+  const hz = (bestBin + shift) * hzPerBin;
+  if (hz < minHz * 0.95 || hz > maxHz * 1.05) return null;
+
+  // Weighted harmonic score for confidence
+  const WEIGHTS = [1, 0.65, 0.42, 0.28, 0.18];
+  let num = 0, den = 0;
+  for (let k = 0; k < WEIGHTS.length; k++) {
+    const hb = Math.round(bestBin * (k+1));
+    if (hb >= mag.length) break;
+    const w = WEIGHTS[k];
+    const v = Math.max(mag[hb-1]||0, mag[hb]||0, mag[hb+1]||0);
+    num += w * v; den += w;
+  }
+  const score = den > 0 ? num / den : 0;
+
+  // Median of all scores to normalise confidence
+  const allScores = [];
+  for (let b = minBin; b <= maxBin; b++) {
+    if (isLocalPeak(mag, b)) allScores.push(hps[b]);
+  }
+  allScores.sort((a,b)=>a-b);
+  const medScore = allScores[Math.floor(allScores.length/2)] || 1e-20;
+  const confidence = score / (medScore + 1e-20);
+
+  return { hz, confidence };
+}
+
+function spectrumBars(freqDb, sampleRate, fftSize, minHz, maxHz) {
+  const hzPerBin = sampleRate / fftSize;
+  const out = new Array(BAR_COUNT).fill(0);
+  const span = Math.max(1, maxHz - minHz);
+  for (let b = 0; b < BAR_COUNT; b++) {
+    const startHz = minHz + span * b / BAR_COUNT;
+    const endHz   = minHz + span * (b+1) / BAR_COUNT;
+    const i0 = Math.max(0, Math.floor(startHz / hzPerBin));
+    const i1 = Math.min(freqDb.length-1, Math.ceil(endHz / hzPerBin));
+    let peak = -120;
+    for (let i = i0; i <= i1; i++) { if (freqDb[i] > peak) peak = freqDb[i]; }
+    out[b] = Math.max(0, Math.min(1, (peak + 90) / 60));
+  }
+  return out;
+}
+
+function syntheticBars(hz, minHz, maxHz) {
+  const span = Math.max(1, maxHz - minHz);
+  const out = new Array(BAR_COUNT).fill(0);
+  for (const [partial, amp] of [[1,1],[2,.38],[3,.18]]) {
+    const center = (hz * partial - minHz) / span;
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const pos = (i+.5)/BAR_COUNT;
+      const w = partial === 1 ? 0.042 : 0.028;
+      const d = (pos - center)/w;
+      out[i] = Math.max(out[i], amp * Math.exp(-d*d));
+    }
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUDIO ENGINE
+═══════════════════════════════════════════════════════════ */
+let audioCtx = null, mediaStream = null, analyserNode = null;
+let freqBuf = null, timeBuf = null, rafId = 0;
+let band = { min: 20, max: 120 };
+let noiseFloor = 0.004;
+let heldHz = null, heldAt = 0, hitSeq = 0;
+let staleTimer = 0;
+const recentHz = [];
+
+// Snap state
+let snap = {
+  status: 'idle', error: null, hz: null,
+  confidence: 0, level: 0, spectrum: new Array(BAR_COUNT).fill(0),
+  hitSeq: 0, demo: false, stale: false
+};
+const listeners = new Set();
+
+function emitSnap() {
+  listeners.forEach(fn => fn(snap));
+}
+
+function markStale() {
+  clearTimeout(staleTimer);
+  staleTimer = setTimeout(() => {
+    if (!snap.hz) return;
+    snap = { ...snap, stale: true };
+    emitSnap();
+  }, 1500);
+}
+
+function lockHz(hz, confidence, fromDemo) {
+  recentHz.push(hz);
+  if (recentHz.length > 5) recentHz.shift();
+  const sorted = [...recentHz].sort((a,b)=>a-b);
+  const mid = sorted[Math.floor(sorted.length/2)];
+  const stable = Math.abs(hz - mid)/mid < 0.08 ? mid : hz;
+  if (Math.abs(hz-mid)/mid >= 0.08) { recentHz.length = 0; recentHz.push(hz); }
+  const isNew = !heldHz || Date.now()-heldAt > 320 || Math.abs(stable-heldHz)/heldHz > 0.03;
+  heldHz = stable; heldAt = Date.now();
+  if (isNew) hitSeq++;
+  snap = { ...snap, hz: heldHz, confidence, hitSeq, demo: fromDemo, stale: false, error: null };
+  markStale(); emitSnap();
+}
+
+function subscribe(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+function setListenBand(min, max) {
+  band = { min, max };
+  heldHz = null; recentHz.length = 0;
+  snap = { ...snap, hz: null, confidence: 0, stale: false,
+    spectrum: snap.demo ? syntheticBars(80, min, max) : new Array(BAR_COUNT).fill(0) };
+  emitSnap();
+}
+
+function teardown() {
+  if (rafId) cancelAnimationFrame(rafId); rafId = 0;
+  if (analyserNode) { analyserNode.disconnect(); analyserNode = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (audioCtx && audioCtx.state !== 'closed') audioCtx.close();
+  audioCtx = null; freqBuf = null; timeBuf = null;
+}
+
+function stopMic() {
+  teardown();
+  heldHz = null; recentHz.length = 0;
+  clearTimeout(staleTimer);
+  snap = { status:'idle', error:null, hz:null, confidence:0, level:0,
+    spectrum: new Array(BAR_COUNT).fill(0), hitSeq, demo:false, stale:false };
+  emitSnap();
+}
+
+function tick() {
+  if (!analyserNode || !freqBuf || !timeBuf || !audioCtx) return;
+  analyserNode.getFloatTimeDomainData(timeBuf);
+  let sum = 0;
+  for (let i = 0; i < timeBuf.length; i++) { const s = timeBuf[i]; sum += s*s; }
+  const rms = Math.sqrt(sum / timeBuf.length);
+  // Gate adaptativo: atualiza piso só quando silencioso, exige 6× o piso para disparar
+  if (rms < noiseFloor * 2.0) noiseFloor = noiseFloor * 0.98 + rms * 0.02;
+  const hot = rms > Math.max(0.012, noiseFloor * 6.0);
+  const level = Math.max(0, Math.min(1, rms * 9));
+
+  analyserNode.getFloatFrequencyData(freqBuf);
+  const spectrum = spectrumBars(freqBuf, audioCtx.sampleRate, analyserNode.fftSize, band.min, band.max);
+
+  if (hot) {
+    // Convert dB → linear for HPS
+    const mag = new Float32Array(freqBuf.length);
+    for (let i = 0; i < freqBuf.length; i++) mag[i] = dbToLinear(freqBuf[i] ?? -120);
+    const hit = hpsDetect(mag, audioCtx.sampleRate, analyserNode.fftSize, band.min, band.max);
+    // Confidence threshold: 2.8 (tighter than before to reduce false readings)
+    if (hit && hit.confidence >= 4.0) lockHz(hit.hz, hit.confidence, false);
+  }
+
+  snap = { ...snap, spectrum, level, status:'live', demo:false };
+  emitSnap();
+  rafId = requestAnimationFrame(tick);
+}
+
+async function startMic() {
+  if (snap.status === 'asking' || snap.status === 'live') return;
+  if (!navigator?.mediaDevices?.getUserMedia) {
+    snap = { ...snap, status:'error', error:'O microfone só funciona em página segura (https) no Chrome do Android.' };
+    emitSnap(); return;
+  }
+  snap = { ...snap, status:'asking', error:null, demo:false }; emitSnap();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:1 },
+      video: false
+    });
+    if (audioCtx && audioCtx.state !== 'closed') await audioCtx.close();
+    audioCtx = new AudioContext({ sampleRate: 44100 });
+    await audioCtx.resume();
+    const node = audioCtx.createAnalyser();
+    // FFT 16384 → ~2.7 Hz/bin at 44100; good enough for drums
+    node.fftSize = 16384;
+    node.smoothingTimeConstant = 0.5;
+    node.minDecibels = -100;
+    node.maxDecibels = -22;
+    const src = audioCtx.createMediaStreamSource(stream);
+    src.connect(node);
+    mediaStream = stream; analyserNode = node;
+    freqBuf = new Float32Array(node.frequencyBinCount);
+    timeBuf = new Float32Array(node.fftSize);
+    noiseFloor = 0.012;
+    snap = { ...snap, status:'live', error:null, demo:false, level:0 }; emitSnap();
+    rafId = requestAnimationFrame(tick);
+  } catch (err) {
+    teardown();
+    const name = err instanceof DOMException ? err.name : '';
+    let error = 'Não foi possível abrir o microfone.';
+    if (name === 'NotAllowedError' || name === 'SecurityError')
+      error = 'Microfone bloqueado. Toque no cadeado da barra de endereço e permita o microfone.';
+    else if (name === 'NotFoundError')
+      error = 'Nenhum microfone encontrado neste aparelho.';
+    snap = { ...snap, status:'error', error, hz:null }; emitSnap();
+  }
+}
+
+// Synthetic blip for bench mode
+async function blip(hz) {
+  if (!audioCtx || audioCtx.state === 'closed') audioCtx = new AudioContext();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  const dur = 0.45;
+  const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    const t = i / audioCtx.sampleRate;
+    const env = Math.exp(-t * 8);
+    d[i] = (Math.sin(2*Math.PI*hz*t) + 0.38*Math.sin(2*Math.PI*hz*2.003*t) + 0.14*Math.sin(2*Math.PI*hz*3.01*t)) * env * 0.2;
+  }
+  const src = audioCtx.createBufferSource();
+  const gain = audioCtx.createGain(); gain.gain.value = 0.85;
+  src.buffer = buf; src.connect(gain); gain.connect(audioCtx.destination); src.start();
+}
+
+async function previewHit(hz) {
+  if (snap.status === 'live' || snap.status === 'asking') stopMic();
+  snap = { ...snap, status:'idle', error:null, demo:true, level:.7,
+    spectrum: syntheticBars(hz, band.min, band.max) };
+  lockHz(hz + (Math.random()-.5)*.6, 8, true);
+  setTimeout(() => { if (!snap.demo) return; snap = {...snap,level:.1}; emitSnap(); }, 430);
+  try { await blip(hz); } catch {}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════════ */
+const FILTERS = {
+  grave: { label:'Grave', hint:'Bumbo e surdos', min:20, max:120 },
+  amplo: { label:'Amplo', hint:'Kit completo', min:20, max:450 },
+  agudo: { label:'Agudo', hint:'Caixa e resposta', min:280, max:460 },
+};
+
+const PIECES = [
+  { id:'kick22', name:'Bumbo 22″', role:'Pele de ataque' },
+  { id:'kick20', name:'Bumbo 20″', role:'Pele de ataque' },
+  { id:'snareB', name:'Caixa 14″', role:'Pele de ataque' },
+  { id:'snareR', name:'Caixa 14″', role:'Pele de resposta' },
+  { id:'tom10',  name:'Tom 10″',  role:'Pele de ataque' },
+  { id:'tom12',  name:'Tom 12″',  role:'Pele de ataque' },
+  { id:'tom13',  name:'Tom 13″',  role:'Pele de ataque' },
+  { id:'floor14',name:'Surdo 14″',role:'Pele de ataque' },
+  { id:'floor16',name:'Surdo 16″',role:'Pele de ataque' },
+];
+
+const STYLES = [
+  { id:'pop',    name:'Pop',    blurb:'Aberto, moderno, sustain no meio.',
+    hz:{kick22:58,kick20:70,snareB:210,snareR:338,tom10:156,tom12:118,tom13:100,floor14:82,floor16:68}},
+  { id:'rock',   name:'Rock',   blurb:'Mais grave, ataque na frente.',
+    hz:{kick22:50,kick20:62,snareB:185,snareR:294,tom10:128,tom12:98,tom13:84,floor14:70,floor16:58}},
+  { id:'jazz',   name:'Jazz',   blurb:'Pele solta, tom cantado e aberto.',
+    hz:{kick22:66,kick20:80,snareB:247,snareR:370,tom10:175,tom12:140,tom13:118,floor14:96,floor16:80}},
+  { id:'metal',  name:'Metal',  blurb:'Bumbo baixo, caixa com estalo seco.',
+    hz:{kick22:46,kick20:55,snareB:196,snareR:311,tom10:108,tom12:84,tom13:72,floor14:60,floor16:50}},
+  { id:'funk',   name:'Funk',   blurb:'Soco no bumbo, caixa no meio do caminho.',
+    hz:{kick22:60,kick20:74,snareB:208,snareR:330,tom10:148,tom12:114,tom13:96,floor14:80,floor16:66}},
+  { id:'gospel', name:'Gospel', blurb:'Caixa estalada, tons que cantam.',
+    hz:{kick22:56,kick20:68,snareB:233,snareR:349,tom10:165,tom12:128,tom13:108,floor14:88,floor16:72}},
+  { id:'samba',  name:'Samba',  blurb:'Caixa alta, kit com brilho e presença.',
+    hz:{kick22:64,kick20:78,snareB:262,snareR:392,tom10:180,tom12:142,tom13:120,floor14:98,floor16:82}},
+  { id:'reggae', name:'Reggae', blurb:'Tudo mais baixo, espaço de dub.',
+    hz:{kick22:42,kick20:50,snareB:147,snareR:233,tom10:98,tom12:78,tom13:66,floor14:55,floor16:46}},
+];
+
+function suggestFilter(hz) {
+  if (hz >= 280) return 'agudo';
+  if (hz <= 120) return 'grave';
+  return 'amplo';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STORE (persisted to localStorage)
+═══════════════════════════════════════════════════════════ */
+const STORAGE_KEY = 'tarraxa-v2';
+
+function defaultState() {
+  return {
+    tab: 'tune',
+    filter: 'grave',
+    lugCount: 8,
+    lugs: Array(8).fill(null),
+    activeLug: 0,
+    target: null,
+    sessions: [],
+    bench: false,
+    benchHz: 200,
+  };
+}
+
+let state = defaultState();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    state = { ...state, ...saved };
+    // Ensure lugs array length matches lugCount
+    while (state.lugs.length < state.lugCount) state.lugs.push(null);
+    state.lugs = state.lugs.slice(0, state.lugCount);
+  } catch {}
+}
+
+function saveState() {
+  try {
+    const { tab, bench, benchHz, ...persist } = state;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(persist));
+  } catch {}
+}
+
+loadState();
+
+/* ═══════════════════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════════════════ */
+let noticeTimer = 0;
+function flash(msg) {
+  const el = document.getElementById('notice');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+function openSheet(title, bodyHtml, onOpen) {
+  document.getElementById('sheet-title').textContent = title;
+  document.getElementById('sheet-body').innerHTML = bodyHtml;
+  document.getElementById('overlay').classList.add('show');
+  if (onOpen) onOpen();
+}
+
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('show');
+}
+
+document.getElementById('sheet-close').addEventListener('click', closeSheet);
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) closeSheet();
+});
+window.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+/* ═══════════════════════════════════════════════════════════
+   SPECTRUM BARS — init
+═══════════════════════════════════════════════════════════ */
+const spectrumEl = document.getElementById('spectrum');
+for (let i = 0; i < BAR_COUNT; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'spec-bar';
+  spectrumEl.appendChild(bar);
+}
+const specBars = Array.from(spectrumEl.children);
+
+/* ═══════════════════════════════════════════════════════════
+   TUNE SCREEN
+═══════════════════════════════════════════════════════════ */
+let pingSeq = 0;
+
+function updateTuneScreen(s) {
+  // Status indicator
+  const dot = document.getElementById('status-dot');
+  const lbl = document.getElementById('status-label');
+  if (s.status === 'live') { dot.className = 'live'; lbl.textContent = 'no ar'; }
+  else if (s.status === 'asking') { dot.className = ''; lbl.textContent = 'mic…'; }
+  else if (s.hz) { dot.className = 'reading'; lbl.textContent = 'pronto'; }
+  else { dot.className = ''; lbl.textContent = 'pronto'; }
+
+  // Spectrum
+  const vals = s.spectrum;
+  const live = s.status === 'live' || s.demo;
+  for (let i = 0; i < specBars.length; i++) {
+    const v = vals[i] || 0;
+    specBars[i].style.transform = `scaleY(${Math.max(0.04, v)})`;
+    specBars[i].style.opacity = live ? String(0.35 + v * 0.65) : '0.3';
+  }
+
+  // Level bar
+  document.getElementById('level-fill').style.transform = `scaleX(${s.level || 0})`;
+
+  // Hz display
+  const hzEl = document.getElementById('meter-hz');
+  const note = s.hz ? hzToNote(s.hz) : null;
+  const target = state.target;
+  const targetCents = target && s.hz ? centsBetween(target.hz, s.hz) : null;
+  const onTarget = targetCents != null && Math.abs(targetCents) <= 10;
+
+  if (s.hz) {
+    hzEl.textContent = Math.round(s.hz);
+    hzEl.className = onTarget ? 'on-target' : 'has-reading';
+  } else {
+    hzEl.textContent = '—';
+    hzEl.className = '';
+  }
+  document.getElementById('meter-note').textContent =
+    note ? (note.label + (s.stale && s.hz ? ' · última' : '')) : 'À espera da batida';
+
+  // Ping ring
+  if (s.hitSeq !== pingSeq) {
+    pingSeq = s.hitSeq;
+    const ping = document.getElementById('meter-ping');
+    ping.classList.remove('ping');
+    void ping.offsetWidth;
+    ping.classList.add('ping');
+  }
+
+  // Needle
+  const needleLabel = document.getElementById('needle-label');
+  const needleVal = document.getElementById('needle-val');
+  const needleThumb = document.getElementById('needle-thumb');
+  const needleHint = document.getElementById('needle-hint');
+  const maskL = document.getElementById('needle-mask-l');
+  const maskR = document.getElementById('needle-mask-r');
+  const needleCents = targetCents != null ? targetCents : (note ? note.cents : 0);
+
+  needleLabel.textContent = target ? 'Contra o alvo' : 'Contra a nota';
+  if (s.hz) {
+    let valText = formatCents(needleCents);
+    if (target) valText += ` · ${(s.hz - target.hz).toFixed(1)} Hz`;
+    needleVal.textContent = valText;
+  } else {
+    needleVal.textContent = '—';
+  }
+
+  const clamped = Math.max(-50, Math.min(50, needleCents));
+  const leftPct = s.hz ? ((clamped + 50) / 100) * 100 : 50;
+  needleThumb.style.left = `${leftPct}%`;
+
+  // Cor do ponteiro e das máscaras por zona
+  const absCents = Math.abs(needleCents);
+  let thumbClass = '';
+  let glowWidth = 18; // largura da janela iluminada em %
+  if (!s.hz) {
+    thumbClass = '';
+    maskL.style.width = '50%'; maskR.style.width = '50%';
+  } else if (absCents <= 10) {
+    thumbClass = 'good';  glowWidth = 22;
+  } else if (absCents <= 20) {
+    thumbClass = 'close'; glowWidth = 18;
+  } else if (absCents <= 35) {
+    thumbClass = 'warn';  glowWidth = 14;
+  } else {
+    thumbClass = 'red';   glowWidth = 10;
+  }
+  needleThumb.className = thumbClass;
+
+  if (s.hz) {
+    // Revelar gradiente só ao redor do ponteiro
+    const half = glowWidth / 2;
+    const lMask = Math.max(0, leftPct - half);
+    const rMask = Math.max(0, 100 - leftPct - half);
+    maskL.style.width = `${lMask}%`;
+    maskR.style.width = `${rMask}%`;
+    // Intensidade do gradiente cresce quando mais próximo do verde
+    document.getElementById('needle-gradient').style.opacity =
+      absCents <= 10 ? '0.70' : absCents <= 20 ? '0.50' : absCents <= 35 ? '0.35' : '0.22';
+  } else {
+    maskL.style.width = '50%'; maskR.style.width = '50%';
+    document.getElementById('needle-gradient').style.opacity = '0.18';
+  }
+
+  if (!s.hz) {
+    needleHint.textContent = 'Encoste o celular na pele e bata uma vez.';
+  } else if (targetCents == null) {
+    needleHint.textContent = 'Escolha um alvo no Guia para mirar um Hz exato.';
+  } else if (absCents <= 10) {
+    needleHint.style.color = 'var(--ok)';
+    needleHint.textContent = '✓ No alvo — pele afinada nessa tarraxa.';
+  } else if (targetCents > 0) {
+    needleHint.style.color = '';
+    needleHint.textContent = 'Aguda — solte a tarraxa um pouco.';
+  } else {
+    needleHint.style.color = '';
+    needleHint.textContent = 'Grave — aperte a tarraxa um pouco.';
+  }
+
+  // Mic button
+  const btnMic = document.getElementById('btn-mic');
+  if (!state.bench) {
+    const micSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
+    const micOffSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
+    if (s.status === 'live') {
+      btnMic.innerHTML = micOffSvg + ' Parar microfone';
+    } else if (s.status === 'asking') {
+      btnMic.innerHTML = micSvg + ' Pedindo o microfone…';
+    } else {
+      btnMic.innerHTML = micSvg + ' Ouvir o tambor';
+    }
+  }
+
+  // Error
+  const errEl = document.getElementById('mic-error');
+  if (s.error) { errEl.textContent = s.error; errEl.classList.add('show'); }
+  else errEl.classList.remove('show');
+
+  // Record lug button
+  const recBtn = document.getElementById('btn-record-lug-tune');
+  if (s.hz) {
+    recBtn.disabled = false;
+    recBtn.textContent = `Gravar ${Math.round(s.hz)} Hz na tarraxa ${state.activeLug + 1}`;
+  } else {
+    recBtn.disabled = true;
+    recBtn.textContent = `Gravar na tarraxa ${state.activeLug + 1}`;
+  }
+
+  // Filter suggestion
+  const suggestEl = document.getElementById('filter-suggest');
+  if (target) {
+    const suggested = suggestFilter(target.hz);
+    if (suggested !== state.filter) {
+      suggestEl.textContent = `Este alvo fica melhor no filtro ${FILTERS[suggested].label} (${FILTERS[suggested].hint}). Mudar agora.`;
+      suggestEl.dataset.filter = suggested;
+      suggestEl.classList.add('show');
+    } else {
+      suggestEl.classList.remove('show');
+    }
+  } else {
+    suggestEl.classList.remove('show');
+  }
+
+  // Bench
+  updateBenchHz();
+}
+
+function applySuggestedFilter() {
+  const f = document.getElementById('filter-suggest').dataset.filter;
+  if (f) setFilter(f);
+}
+
+function updateBenchHz() {
+  const btn = document.getElementById('btn-bench-hit');
+  if (btn) btn.textContent = `Bater · ${Math.round(state.benchHz)} Hz`;
+}
+
+function setFilter(id) {
+  state.filter = id;
+  const f = FILTERS[id];
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === id);
+  });
+  document.getElementById('filter-hint').textContent = `${f.min}–${f.max} Hz · ${f.hint}`;
+  setListenBand(f.min, f.max);
+  saveState();
+}
+
+// Target chip
+function updateTargetChip() {
+  const chip = document.getElementById('target-chip');
+  const t = state.target;
+  if (t) {
+    document.getElementById('target-meta').textContent = `${t.styleName} · ${t.role}`;
+    document.getElementById('target-name').textContent = t.pieceName;
+    document.getElementById('target-hz-val').textContent = Math.round(t.hz);
+    chip.classList.add('show');
+  } else {
+    chip.classList.remove('show');
+  }
+}
+
+document.getElementById('btn-clear-target').addEventListener('click', () => {
+  state.target = null; updateTargetChip(); saveState();
+  document.getElementById('filter-suggest').classList.remove('show');
+  document.querySelectorAll('.guide-item').forEach(el => el.classList.remove('selected'));
+});
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => setFilter(btn.dataset.filter));
+});
+
+// Mic button
+document.getElementById('btn-mic').addEventListener('click', () => {
+  if (snap.status === 'live') { stopMic(); return; }
+  state.bench = false;
+  document.getElementById('bench-controls').style.display = 'none';
+  document.getElementById('btn-mic').style.display = '';
+  document.getElementById('btn-toggle-bench').textContent = 'Testar sem bateria';
+  startMic();
+});
+
+// Toggle bench
+document.getElementById('btn-toggle-bench').addEventListener('click', () => {
+  state.bench = !state.bench;
+  document.getElementById('bench-controls').style.display = state.bench ? 'flex' : 'none';
+  document.getElementById('btn-mic').style.display = state.bench ? 'none' : '';
+  document.getElementById('btn-toggle-bench').textContent = state.bench ? 'Usar o microfone' : 'Testar sem bateria';
+  if (state.bench && snap.status === 'live') stopMic();
+});
+
+// Bench buttons
+document.getElementById('btn-bench-hit').addEventListener('click', () => {
+  previewHit(state.benchHz);
+});
+document.getElementById('btn-nudge-down').addEventListener('click', () => {
+  state.benchHz = Math.max(25, state.benchHz - Math.max(2, state.benchHz * 0.03));
+  updateBenchHz();
+});
+document.getElementById('btn-nudge-up').addEventListener('click', () => {
+  state.benchHz = Math.min(490, state.benchHz + Math.max(2, state.benchHz * 0.03));
+  updateBenchHz();
+});
+
+// Record from tune
+document.getElementById('btn-record-lug-tune').addEventListener('click', () => {
+  const hz = snap.hz;
+  if (!hz) return;
+  recordLug(hz);
+});
+
+// Help
+document.getElementById('btn-help').addEventListener('click', () => {
+  openSheet('Como usar', `
+    <div id="help-steps">
+      <div class="help-step"><span class="help-step-n">01</span><span>Encoste o celular na pele, sem apoiar no aro.</span></div>
+      <div class="help-step"><span class="help-step-n">02</span><span>Use <b>Grave</b> para bumbo/surdo, <b>Amplo</b> para toms, <b>Agudo</b> para a caixa.</span></div>
+      <div class="help-step"><span class="help-step-n">03</span><span>Bata perto de cada tarraxa e grave o Hz na aba Tarraxas.</span></div>
+      <div class="help-step"><span class="help-step-n">04</span><span>Solte a mais aguda ou aperte a mais grave até o desvio cair abaixo de 20¢.</span></div>
+    </div>
+    <div class="help-install">
+      <p class="help-install-title">Instalar no Android</p>
+      <p>No Chrome, abra o menu (⋮) e toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</p>
+      <p style="margin-top:4px">No iOS (Safari), toque em Compartilhar → Adicionar à Tela de Início.</p>
+      <p style="margin-top:4px;color:var(--acc)">Nada é enviado para fora. Tudo fica no aparelho.</p>
+    </div>
+  `);
+});
+
+/* ═══════════════════════════════════════════════════════════
+   LUGS SCREEN
+═══════════════════════════════════════════════════════════ */
+function renderLugDiagram() {
+  const container = document.getElementById('lug-buttons');
+  container.innerHTML = '';
+  const report = lugReport(state.lugs);
+  const n = state.lugCount;
+
+  for (let i = 0; i < n; i++) {
+    const angle = -Math.PI/2 + i * 2 * Math.PI / n;
+    const x = 50 + Math.cos(angle) * 42;
+    const y = 50 + Math.sin(angle) * 42;
+    const hz = state.lugs[i];
+    const tone = lugTone(hz, report.median);
+    const active = i === state.activeLug;
+    const btn = document.createElement('button');
+    btn.className = ['lug-btn', active ? 'active' : tone === 'empty' ? '' : tone].filter(Boolean).join(' ');
+    btn.style.left = `${x}%`;
+    btn.style.top  = `${y}%`;
+    btn.setAttribute('aria-label', hz == null ? `Tarraxa ${i+1} vazia` : `Tarraxa ${i+1}, ${hz.toFixed(1)} Hz`);
+    btn.setAttribute('aria-pressed', String(active));
+    btn.textContent = hz == null ? String(i+1) : Math.round(hz);
+    btn.addEventListener('click', () => {
+      state.activeLug = i; saveState();
+      renderLugDiagram(); updateLugsScreen();
+    });
+    container.appendChild(btn);
+  }
+
+  // Center spread
+  const spreadEl = document.getElementById('lug-spread');
+  const labelEl  = document.getElementById('lug-spread-label');
+  if (report.count < 2) {
+    spreadEl.textContent = '—'; spreadEl.className = '';
+    labelEl.textContent = 'desvio';
+  } else {
+    spreadEl.textContent = `${report.spreadCents}¢`;
+    spreadEl.className = report.uniform ? 'uniform' : '';
+    labelEl.textContent = report.uniform ? 'uniforme' : 'desvio';
+  }
+
+  document.getElementById('lug-advice').textContent = report.advice;
+}
+
+function updateLugsScreen() {
+  const report = lugReport(state.lugs);
+  const recBtn = document.getElementById('lug-record-btn');
+  if (snap.hz) {
+    recBtn.disabled = false;
+    recBtn.textContent = `Gravar ${snap.hz.toFixed(1)} Hz na tarraxa ${state.activeLug+1}`;
+  } else {
+    recBtn.disabled = true;
+    recBtn.textContent = 'Sem leitura — bata e grave';
+  }
+  document.getElementById('btn-save-session').disabled = report.count === 0;
+}
+
+function recordLug(hz) {
+  const i = state.activeLug;
+  state.lugs[i] = Math.round(hz * 10) / 10;
+  state.activeLug = (i+1) % state.lugCount;
+  saveState();
+  flash(`Tarraxa ${i+1} · ${state.lugs[i].toFixed(1)} Hz`);
+  renderLugDiagram(); updateLugsScreen();
+}
+
+// Count selector
+document.querySelectorAll('.lug-count-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const n = parseInt(btn.dataset.count);
+    state.lugCount = n;
+    while (state.lugs.length < n) state.lugs.push(null);
+    state.lugs = state.lugs.slice(0, n);
+    state.activeLug = Math.min(state.activeLug, n-1);
+    saveState();
+    document.querySelectorAll('.lug-count-btn').forEach(b =>
+      b.classList.toggle('active', parseInt(b.dataset.count) === n));
+    renderLugDiagram(); updateLugsScreen();
+  });
+});
+
+// Init count buttons
+document.querySelectorAll('.lug-count-btn').forEach(b =>
+  b.classList.toggle('active', parseInt(b.dataset.count) === state.lugCount));
+
+// Record from lugs
+document.getElementById('lug-record-btn').addEventListener('click', () => {
+  if (!snap.hz) return;
+  recordLug(snap.hz);
+});
+
+// Clear lugs
+document.getElementById('btn-clear-lugs').addEventListener('click', () => {
+  state.lugs = Array(state.lugCount).fill(null);
+  state.activeLug = 0;
+  saveState(); renderLugDiagram(); updateLugsScreen();
+  flash('Mapa limpo');
+});
+
+// Save session
+document.getElementById('btn-save-session').addEventListener('click', () => {
+  const when = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+  const defaultTitle = `${state.target?.pieceName ?? 'Kit'} · ${when}`;
+  openSheet('Salvar sessão', `
+    <div id="save-form">
+      <label><span>Nome</span>
+        <input id="sf-title" maxlength="60" value="${defaultTitle.replace(/"/g,'&quot;')}">
+      </label>
+      <label><span>Nota (opcional)</span>
+        <textarea id="sf-note" rows="3" placeholder="Esteira, abafador, sala, marca da pele…"></textarea>
+      </label>
+      <button class="btn-primary" id="btn-confirm-save">Guardar neste celular</button>
+    </div>
+  `, () => {
+    document.getElementById('btn-confirm-save').addEventListener('click', () => {
+      const title = document.getElementById('sf-title').value.trim() || 'Sessão';
+      const note  = document.getElementById('sf-note').value.trim();
+      const session = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `s-${Date.now()}`,
+        title, note,
+        filter: state.filter,
+        target: state.target,
+        lugs: state.lugs.slice(),
+        lugCount: state.lugCount,
+        createdAt: Date.now(),
+      };
+      state.sessions = [session, ...state.sessions].slice(0, 40);
+      saveState(); closeSheet();
+      flash('Sessão guardada'); renderNotes();
+      switchTab('notes');
+    });
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   GUIDE SCREEN
+═══════════════════════════════════════════════════════════ */
+let activeStyleId = 'pop';
+
+function renderGuide() {
+  const scroll = document.getElementById('style-scroll');
+  const blurb  = document.getElementById('style-blurb');
+  const list   = document.getElementById('guide-list');
+  const style  = STYLES.find(s => s.id === activeStyleId) || STYLES[0];
+
+  // Style chips (only render once)
+  if (!scroll.children.length) {
+    STYLES.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'style-chip' + (s.id === activeStyleId ? ' active' : '');
+      btn.textContent = s.name;
+      btn.addEventListener('click', () => {
+        activeStyleId = s.id;
+        document.querySelectorAll('.style-chip').forEach(b =>
+          b.classList.toggle('active', b.textContent === s.name));
+        renderGuideItems();
+      });
+      scroll.appendChild(btn);
+    });
+  }
+
+  blurb.textContent = style.blurb;
+  list.innerHTML = '';
+  PIECES.forEach(piece => {
+    const hz = style.hz[piece.id];
+    const note = hzToNote(hz);
+    const selected = state.target?.styleId === style.id && state.target?.pieceId === piece.id;
+    const li = document.createElement('li');
+    li.style.listStyle = 'none';
+    const btn = document.createElement('button');
+    btn.className = 'guide-item' + (selected ? ' selected' : '');
+    btn.innerHTML = `
+      <div class="guide-item-info">
+        <div class="guide-item-name">${piece.name}</div>
+        <div class="guide-item-role">${piece.role}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="guide-item-hz">${Math.round(hz)}</div>
+        <div class="guide-item-note">${note ? note.label : ''}</div>
+      </div>
+    `;
+    btn.setAttribute('aria-pressed', String(selected));
+    btn.addEventListener('click', () => {
+      const f = suggestFilter(hz);
+      state.filter = f;
+      setFilter(f);
+      state.target = { styleId: style.id, styleName: style.name, pieceId: piece.id, pieceName: piece.name, role: piece.role, hz };
+      saveState(); updateTargetChip();
+      document.querySelectorAll('.guide-item').forEach(el => el.classList.remove('selected'));
+      btn.classList.add('selected');
+      flash(`Alvo: ${piece.name} ${Math.round(hz)} Hz`);
+      switchTab('tune');
+    });
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+function renderGuideItems() {
+  const style = STYLES.find(s => s.id === activeStyleId) || STYLES[0];
+  document.getElementById('style-blurb').textContent = style.blurb;
+  const list = document.getElementById('guide-list');
+  list.innerHTML = '';
+  PIECES.forEach(piece => {
+    const hz = style.hz[piece.id];
+    const note = hzToNote(hz);
+    const selected = state.target?.styleId === style.id && state.target?.pieceId === piece.id;
+    const li = document.createElement('li');
+    li.style.listStyle = 'none';
+    const btn = document.createElement('button');
+    btn.className = 'guide-item' + (selected ? ' selected' : '');
+    btn.innerHTML = `
+      <div class="guide-item-info">
+        <div class="guide-item-name">${piece.name}</div>
+        <div class="guide-item-role">${piece.role}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="guide-item-hz">${Math.round(hz)}</div>
+        <div class="guide-item-note">${note ? note.label : ''}</div>
+      </div>
+    `;
+    btn.addEventListener('click', () => {
+      const f = suggestFilter(hz);
+      setFilter(f);
+      state.target = { styleId: style.id, styleName: style.name, pieceId: piece.id, pieceName: piece.name, role: piece.role, hz };
+      saveState(); updateTargetChip();
+      document.querySelectorAll('.guide-item').forEach(el => el.classList.remove('selected'));
+      btn.classList.add('selected');
+      flash(`Alvo: ${piece.name} ${Math.round(hz)} Hz`);
+      switchTab('tune');
+    });
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NOTES SCREEN
+═══════════════════════════════════════════════════════════ */
+const pendingDelete = new Set();
+
+function renderNotes() {
+  const el = document.getElementById('notes-content');
+  if (!state.sessions.length) {
+    el.innerHTML = `
+      <div id="notes-empty">
+        <p style="font-size:15px;font-weight:600">Nenhuma sessão ainda</p>
+        <p>Afine, grave pelo menos uma tarraxa e salve. Fica só neste aparelho.</p>
+        <button class="btn-primary" style="margin-top:14px;max-width:200px" onclick="switchTab('lugs')">Ir para as tarraxas</button>
+      </div>`;
+    return;
+  }
+  const list = document.createElement('div');
+  list.id = 'notes-list';
+  state.sessions.forEach(session => {
+    const report = lugReport(session.lugs);
+    const when = new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(session.createdAt);
+    const card = document.createElement('div');
+    card.className = 'session-card';
+    card.innerHTML = `
+      <div class="session-title">${session.title}</div>
+      <div class="session-meta">${when}${session.target ? ` · ${session.target.styleName} · ${session.target.pieceName}` : ''}</div>
+      <div class="session-stats">${report.count} ${report.count===1?'tarraxa':'tarraxas'}${report.count>=2?' · desvio '+report.spreadCents+'¢':''}${report.uniform?' · uniforme':''}</div>
+      ${session.note ? `<div class="session-note-text">${session.note}</div>` : ''}
+      <div class="session-actions">
+        <button class="btn-primary" data-load="${session.id}">Abrir mapa</button>
+        <button class="btn-del" data-del="${session.id}">${pendingDelete.has(session.id)?'Confirmar':'Apagar'}</button>
+      </div>
+    `;
+    card.querySelector('[data-load]').addEventListener('click', () => {
+      const s = state.sessions.find(x => x.id === session.id);
+      if (!s) return;
+      const n = ([6,8,10].includes(s.lugs.length) ? s.lugs.length : 8);
+      state.lugs = s.lugs.slice();
+      state.lugCount = n;
+      state.activeLug = 0;
+      state.filter = s.filter;
+      state.target = s.target;
+      saveState(); updateTargetChip(); setFilter(s.filter);
+      document.querySelectorAll('.lug-count-btn').forEach(b =>
+        b.classList.toggle('active', parseInt(b.dataset.count) === n));
+      renderLugDiagram(); updateLugsScreen();
+      flash('Sessão aberta'); switchTab('lugs');
+    });
+    const delBtn = card.querySelector('[data-del]');
+    delBtn.classList.toggle('confirm', pendingDelete.has(session.id));
+    delBtn.addEventListener('click', () => {
+      if (pendingDelete.has(session.id)) {
+        state.sessions = state.sessions.filter(x => x.id !== session.id);
+        pendingDelete.delete(session.id);
+        saveState(); renderNotes();
+      } else {
+        pendingDelete.add(session.id);
+        delBtn.textContent = 'Confirmar';
+        delBtn.classList.add('confirm');
+      }
+    });
+    list.appendChild(card);
+  });
+  el.innerHTML = '';
+  el.appendChild(list);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`screen-${tab}`).classList.add('active');
+  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+  if (tab === 'lugs') { renderLugDiagram(); updateLugsScreen(); }
+  if (tab === 'guide') renderGuide();
+  if (tab === 'notes') renderNotes();
+  if (tab === 'tune') updateTargetChip();
+}
+
+document.querySelectorAll('[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+/* ═══════════════════════════════════════════════════════════
+   SNAP SUBSCRIBER — drives all UI
+═══════════════════════════════════════════════════════════ */
+subscribe(s => {
+  updateTuneScreen(s);
+  if (document.getElementById('screen-lugs').classList.contains('active')) updateLugsScreen();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════ */
+// Restore persisted state
+setFilter(state.filter);
+updateTargetChip();
+renderLugDiagram();
+renderGuide();
+renderNotes();
+updateTuneScreen(snap);
+
+// Restore bench hz if needed
+if (state.target?.hz) state.benchHz = state.target.hz;
+updateBenchHz();
+</script>
+</body>
+</html>
